@@ -1,6 +1,22 @@
 WinFBX
 Windows Framework for FreeBASIC.
 
+22 Jan 2019
+- Added the functions AfxExtractResource and AfxExtractResourceToFile to AfxWin.inc.
+
+3 Jan 2019
+- Added the function AfxCXpButtonPtr to CXpButton.inc.
+
+3 Jan 2019
+- Added the function AfxGetWindowSize.
+
+28 Dic 2018
+- Modified the overloaded functions ValLng and ValULng to return a LOGINT/ULONGINT.
+
+15 Dic 2018
+- Paul Squires: Added GetBkColorHot and SetBkColorHot methods, as well as double buffering.
+- Paul Squires: Added SetImageWidth, SetUmageHeight and SetUmageSize methods.
+
 16 Sep 2018 - Version 1.0.03
 - Added the CMemMapFile class (memory-mapped files).
 

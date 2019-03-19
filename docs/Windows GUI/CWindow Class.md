@@ -101,6 +101,8 @@ DIM pWindow AS CWindow = "MyClassName"
 | [ryRatio](#ryRatio) | Returns the vertical scaling ratio. |
 | [ScaleX](#ScaleX) | Scales an horizontal coordinate according the DPI setting. |
 | [ScaleY](#ScaleY) | Scales a vertical coordinate according the DPI setting. |
+| [ScreenX](#ScreenX) | Returns the x-coordinate of the window relative to the screen. |
+| [ScreenY](#ScreenY) | Returns the y-coordinate of the window relative to the screen. |
 | [ScrollWindowPtr](#ScrollWindowPtr) | Gets/sets a pointer to the scroll window class. |
 | [SetClientSize](#SetClientSize) | Adjusts the bounding rectangle of the window based on the desired size of the client area. |
 | [SetFont](#SetFont) | Creates a DPI aware logical font and sets it as the default font. |
@@ -2456,8 +2458,6 @@ SUB AddAccelerator (BYVAL fvirt AS UBYTE, BYVAL wKey AS WORD, BYVAL cmd AS WORD)
 
 #### Remarks
 
-#### Remarks
-
 To create an accelerator table, first add all the keys using this method and then call the **CreateAcceleratorTable** method.
 
 #### Example
@@ -3486,6 +3486,34 @@ PROPERTY Width () AS LONG
 
 ```
 DIM nWidth AS LONG = pWindow.Width
+```
+
+# <a name="ScreenX"></a>ScreenX
+
+Returns the unscaled x-coordinate of the window relative to the screen.
+
+```
+PROPERTY ScreenX () AS LONG
+```
+
+#### Usage example
+
+```
+DIM nLeft AS LONG = pWindow.ScreenX
+```
+
+# <a name="ScreenY"></a>ScreenY
+
+Returns the unscaled y-coordinate of the window relative to the screen.
+
+```
+PROPERTY ScreenY () AS LONG
+```
+
+#### Usage example
+
+```
+DIM nTop AS LONG = pWindow.ScreenY
 ```
 
 # <a name="hWindow"></a>hWindow

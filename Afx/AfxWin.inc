@@ -1167,6 +1167,119 @@ PRIVATE FUNCTION AfxGetMACAddress () AS STRING
 END FUNCTION
 ' ========================================================================================
 
+' ========================================================================================
+' Extracts resource data and returns it as a string.
+' Parameters:
+' - hInstance       = [in] A handle to the module whose portable executable file or an accompanying
+'                     MUI file contains the resource. If this parameter is NULL, the function searches
+'                     the module used to create the current process.
+' - wszResourceName = [in] Name of the resource. If the resource is an image that uses an integral
+'                     identifier, wszResourceName should begin with a number symbol (#)
+'                     followed by the identifier in an ASCII format, e.g., "#998". Otherwise,
+'                     use the text identifier name for the image. Only images embedded as raw data
+'                     (type RCDATA) are valid. These must be in format .png, .jpg, .gif, .tiff.
+' - pResourceType   = Type of the resource, e.g. RT_RCDATA. For a list of predefined resource types see:
+'                     https://docs.microsoft.com/en-us/windows/desktop/menurc/resource-types
+' Return Value:
+'    A string containing the resource data.
+' Example:
+' DIM strResData AS STRING = AfxExtractResource(NULL, "IDI_ARROW_RIGHT", RT_RCDATA)
+'   - where IDI_ARROW_RIGHT is the identifier in the resource file for
+'     IDI_ARROW_RIGHT RCDATA ".\Resources\arrow_right_64.png"
+' --or--
+' DIM strResData AS STRING = AfxExtractResource(NULL, "#111", RT_RCDATA)
+'   - where "#111" is the identifier in the resource file for
+'   - 111 RCDATA ".\Resources\VEGA_PAZ_01.jpg"
+' -----
+' // Write the resource data to a file
+' DIM hFile AS HANDLE = CreateFileW("PazVega.jpg", GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL)
+' IF hFile THEN
+'    DIM dwBytesWritten AS DWORD
+'    DIM bSuccess AS BOOLEAN = WriteFile(hFile, STRPTR(strResData), LEN(strResData), @dwBytesWritten, NULL)
+'    CloseHandle(hFile)
+'    print bSuccess
+' END IF
+' ========================================================================================
+PRIVATE FUNCTION AfxExtractResource (BYVAL hInstance AS HINSTANCE, _
+   BYREF wszResourceName AS WSTRING, BYVAL pResourceType AS LPWSTR = RT_RCDATA) AS STRING
+
+   ' // Find the resource
+   DIM hRes AS HRSRC
+   IF LEFT(wszResourceName, 1) = "#" THEN
+      DIM wID AS WORD = VAL(MID(wszResourceName, 2))
+      DIM dwID AS DWORD = MAKELONG(wID, 0)
+      hRes = FindResourceW(hInstance, MAKEINTRESOURCEW(dwID), pResourceType)
+   ELSE
+      hRes = FindResourceW(hInstance, wszResourceName, pResourceType)
+   END IF
+   IF hRes = NULL THEN RETURN ""
+   ' // Retrieve the resource size
+   DIM ResSize AS DWORD = SizeofResource(hInstance, hRes)
+   IF ResSize = 0 THEN RETURN ""
+   ' // Lock the resource
+   DIM pResData AS LPVOID = LockResource(LoadResource(hInstance, hRes))
+   IF pResData = NULL THEN RETURN ""
+   DIM strResData AS STRING = SPACE(ResSize)
+   memcpy STRPTR(strResData), pResData, ResSize
+   RETURN strResData
+
+END FUNCTION
+' ========================================================================================
+
+' ========================================================================================
+' Extracts resource data and saves it to a file.
+' Parameters:
+' - hInstance       = [in] A handle to the module whose portable executable file or an accompanying
+'                     MUI file contains the resource. If this parameter is NULL, the function searches
+'                     the module used to create the current process.
+' - wszResourceName = [in] Name of the resource. If the resource is an image that uses an integral
+'                     identifier, wszResourceName should begin with a number symbol (#)
+'                     followed by the identifier in an ASCII format, e.g., "#998". Otherwise,
+'                     use the text identifier name for the image. Only images embedded as raw data
+'                     (type RCDATA) are valid. These must be in format .png, .jpg, .gif, .tiff.
+' - wszFileName     = Path of the file where to save the extracted resource.
+' - pResourceType   = Type of the resource, e.g. RT_RCDATA. For a list of predefined resource types see:
+'                     https://docs.microsoft.com/en-us/windows/desktop/menurc/resource-types
+' Return Value:
+'    Returns TRUE on success or FALSE on failure.
+' Example:
+'    AfxExtractResourceToFile(NULL, "IDI_ARROW_RIGHT", "IDI_ARROW_RIGHT.png", RT_RCDATA)
+'    where IDI_ARROW_RIGHT is the identifier in the resource file for
+'    IDI_ARROW_RIGHT RCDATA ".\Resources\arrow_right_64.png"
+' Example:
+'    AfxExtractResourceToFile(NULL, "#111", "VEGA_PAZ_01.jpg", RT_RCDATA)
+'    where "#111" is the identifier in the resource file for
+'    111 RCDATA ".\Resources\VEGA_PAZ_01.jpg"
+' ========================================================================================
+PRIVATE FUNCTION AfxExtractResourceToFile (BYVAL hInstance AS HINSTANCE, BYREF wszResourceName AS WSTRING, _
+   BYREF wszFileName AS WSTRING, BYVAL pResourceType AS LPWSTR = RT_RCDATA) AS BOOLEAN
+
+   ' // Find the resource
+   DIM hRes AS HRSRC
+   IF LEFT(wszResourceName, 1) = "#" THEN
+      DIM wID AS WORD = VAL(MID(wszResourceName, 2))
+      DIM dwID AS DWORD = MAKELONG(wID, 0)
+      hRes = FindResourceW(hInstance, MAKEINTRESOURCEW(dwID), pResourceType)
+   ELSE
+      hRes = FindResourceW(hInstance, wszResourceName, pResourceType)
+   END IF
+   IF hRes = NULL THEN RETURN FALSE
+   ' // Retrieve the resource size
+   DIM ResSize AS DWORD = SizeofResource(hInstance, hRes)
+   IF ResSize = 0 THEN RETURN FALSE
+   ' // Lock the resource
+   DIM pResData AS LPVOID = LockResource(LoadResource(hInstance, hRes))
+   IF pResData = NULL THEN RETURN FALSE
+   ' // Write the resource data to a file
+   DIM hFile AS HANDLE = CreateFileW(wszFileName, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL)
+   IF hFile = INVALID_HANDLE_VALUE THEN RETURN FALSE
+   DIM dwBytesWritten AS DWORD
+   DIM bSuccess AS BOOLEAN = WriteFile(hFile, pResData, ResSize, @dwBytesWritten, NULL)
+   CloseHandle(hFile)
+   RETURN bSuccess
+
+END FUNCTION
+' ========================================================================================
 
 ' ########################################################################################
 '                                      *** WINDOW ***
@@ -1601,12 +1714,45 @@ END FUNCTION
 ' ========================================================================================
 
 ' ========================================================================================
+' Gets the location of the top left corner of the window, in pixels.
+' The location is relative to the upper-left corner of the client area in the parent window.
+' ========================================================================================
+PRIVATE SUB AfxGetWindowLocation (BYVAL hwnd AS HWND, BYREF nLeft AS LONG, BYREF nTop AS LONG)
+   DIM rc AS RECT
+   ' // Get the dimensions of the window
+   GetWindowRect(hwnd, @rc)
+   ' // Convert the coordinates to be relative to the parent
+   MapWindowPoints(HWND_DESKTOP, GetParent(hwnd), CAST(POINT PTR, @rc), 2)
+   ' // Return the left and top values
+   nLeft = rc.Left
+   nTop = rc.Top
+END SUB
+' ========================================================================================
+
+' ========================================================================================
 ' Sets the location of the top left corner of the window, in pixels.
 ' The location is relative to the upper-left corner of the client area in the parent window.
 ' Return value: TRUE or FALSE. To get extended error information, call GetLastError.
 ' ========================================================================================
 PRIVATE FUNCTION AfxSetWindowLocation (BYVAL hwnd AS HWND, BYVAL nLeft AS LONG, BYVAL nTop AS LONG) AS BOOLEAN
    FUNCTION = SetWindowPos(hwnd, 0, nLeft, nTop, 0, 0, SWP_NOSIZE OR SWP_NOZORDER)
+END FUNCTION
+' ========================================================================================
+
+' ========================================================================================
+' Gets the width and height of the window, in pixels.
+' - hwnd = Handle of the window.
+' - nWidth = The width of the client area.
+' - nHeight = The height of the client ara.
+' Return value: TRUE or FALSE. To get extended error information, call GetLastError.
+' ========================================================================================
+PRIVATE FUNCTION AfxGetWindowSize (BYVAL hwnd AS HWND, BYREF nWidth AS LONG, BYREF nHeight AS LONG) AS BOOLEAN
+   DIM rc AS RECT
+   ' // Get the dimensions of the window
+   FUNCTION = GetWindowRect(hwnd, @rc)
+   ' // Return the width and height values
+   nWidth = rc.Right - rc.Left
+   nHeight = rc.Bottom - rc.Top
 END FUNCTION
 ' ========================================================================================
 
@@ -1872,22 +2018,6 @@ PRIVATE FUNCTION AfxGethWndFromPID (BYVAL PID AS DWORD) AS HWND
       hwnd = GetWindow(hwnd, GW_HWNDNEXT)
    WEND
 END FUNCTION
-' ========================================================================================
-
-' ========================================================================================
-' Gets the location of the top left corner of the window, in pixels.
-' The location is relative to the upper-left corner of the client area in the parent window.
-' ========================================================================================
-PRIVATE SUB AfxGetWindowLocation (BYVAL hwnd AS HWND, BYREF nLeft AS LONG, BYREF nTop AS LONG)
-   DIM rc AS RECT
-   ' // Get the dimensions of the window
-   GetWindowRect(hwnd, @rc)
-   ' // Convert the coordinates to be relative to the parent
-   MapWindowPoints(HWND_DESKTOP, GetParent(hwnd), CAST(POINT PTR, @rc), 2)
-   ' // Return the left and top values
-   nLeft = rc.Left
-   nTop = rc.Top
-END SUB
 ' ========================================================================================
 
 ' ========================================================================================
@@ -3248,7 +3378,7 @@ END FUNCTION
 ' Unicode replacement for Free Basic's FileCopy.
 ' Returns 0 on success, or 1 if an error occurred.
 ' ========================================================================================
-PRIVATE FUNCTION AfxFilecopy (BYVAL lpExistingFileName AS LPCWSTR, BYVAL lpNewFileName AS LPCWSTR) AS LONG
+PRIVATE FUNCTION AfxFileCopy (BYVAL lpExistingFileName AS LPCWSTR, BYVAL lpNewFileName AS LPCWSTR) AS LONG
    DIM nRet AS LONG = IIF(CopyFileW(lpExistingFileName, lpNewFileName, FALSE) = 0, 1, 0)
    RETURN nRet
 END FUNCTION
